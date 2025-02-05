@@ -1,2 +1,12 @@
 target
 .idea
+./compete.toml
+
+# 各コンテストの自動生成ファイルを無視
+a*/.cargo/config.toml
+a*/test.sh
+a*/submit.sh
+a*/open.sh
+a*/Cargo.lock
+a*/Cargo.toml
+a*/testcases
