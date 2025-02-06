@@ -124,8 +124,8 @@ where
 
 fn main() {
     input! {
-        N: usize,
-        S: Chars,
-        A: [i64;N]
+        A: i64,
+        B: i64,
     }
+    println!("{}", A + B)
 }

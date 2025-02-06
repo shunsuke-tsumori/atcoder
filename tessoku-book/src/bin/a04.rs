@@ -125,7 +125,6 @@ where
 fn main() {
     input! {
         N: usize,
-        S: Chars,
-        A: [i64;N]
     }
+    println!("{:010b}", N)
 }

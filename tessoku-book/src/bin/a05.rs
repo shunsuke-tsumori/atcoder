@@ -124,8 +124,16 @@ where
 
 fn main() {
     input! {
-        N: usize,
-        S: Chars,
-        A: [i64;N]
+        N: i64,
+        K: i64,
     }
+    let mut ans: i64 = 0;
+    for i in 1..=N {
+        for j in 1..=N {
+            if (K - i - j >= 1) && (K - i - j <= N) {
+                ans += 1;
+            }
+        }
+    }
+    println!("{}", ans);
 }
