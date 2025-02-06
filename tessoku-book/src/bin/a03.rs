@@ -1,7 +1,7 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
 use proconio::marker::*;
 use proconio::*;
-use std::collections::HashSet;
+use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
 
