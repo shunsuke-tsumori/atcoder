@@ -1,6 +1,7 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
 use proconio::marker::*;
 use proconio::*;
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::str::FromStr;
 
@@ -124,7 +125,17 @@ where
 fn main() {
     input! {
         N: usize,
-        S: Chars,
-        A: [i64;N]
+        K: i64,
+        P: [i64;N],
+        Q: [i64;N],
     }
+
+    let q_set: HashSet<i64> = Q.into_iter().collect();
+    for p in P {
+        if q_set.contains(&(K-p)) {
+            println!("Yes");
+            return;
+        }
+    }
+    println!("No");
 }
