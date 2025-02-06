@@ -174,6 +174,7 @@ where
         .collect()
 }
 
+#[fastout]  // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
