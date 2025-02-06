@@ -51,6 +51,9 @@ where
 ************************************************************/
 /// ランレングス圧縮
 ///
+/// # 使用例
+///     run_length_encode("aaabbccccaa".chars())
+///
 /// # 引数
 ///
 /// - `data`: 圧縮対象のデータスライス。要素が `Eq` と `Clone` を実装している必要がある。
@@ -61,29 +64,31 @@ where
 ///
 /// # 例: vec![('a', 3), ('b', 2), ('c', 4), ('a', 2)]
 ///
-pub fn run_length_encode<T>(data: &[T]) -> Vec<(T, usize)>
+pub fn run_length_encode<I, T>(data: I) -> Vec<(T, usize)>
 where
+    I: IntoIterator<Item = T>,
     T: Eq + Clone,
 {
+    let mut iter = data.into_iter();
+    let first = match iter.next() {
+        Some(x) => x,
+        None => return Vec::new(),
+    };
+
+    let mut current = first;
+    let mut count = 1;
     let mut result = Vec::new();
-    if data.is_empty() {
-        return result;
-    }
 
-    let mut current_value = data[0].clone();
-    let mut current_count = 1;
-
-    for i in 1..data.len() {
-        if data[i] == current_value {
-            current_count += 1;
+    for item in iter {
+        if item == current {
+            count += 1;
         } else {
-            result.push((current_value, current_count));
-            current_value = data[i].clone();
-            current_count = 1;
+            result.push((current, count));
+            current = item;
+            count = 1;
         }
     }
-
-    result.push((current_value, current_count));
+    result.push((current, count));
     result
 }
 
@@ -110,13 +115,10 @@ pub fn run_length_decode<T>(encoded: &[(T, usize)]) -> Vec<T>
 where
     T: Clone,
 {
-    let mut result = Vec::new();
-    for (value, count) in encoded {
-        for _ in 0..*count {
-            result.push(value.clone());
-        }
-    }
-    result
+    encoded
+        .iter()
+        .flat_map(|(value, count)| std::iter::repeat(value.clone()).take(*count))
+        .collect()
 }
 
 fn main() {
