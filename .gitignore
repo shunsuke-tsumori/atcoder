@@ -1,6 +1,6 @@
 target
 .idea
-./compete.toml
+compete.toml
 
 # 各コンテストの自動生成ファイルを無視
 a*/.cargo/config.toml
@@ -10,3 +10,11 @@ a*/open.sh
 a*/Cargo.lock
 a*/Cargo.toml
 a*/testcases
+
+tessoku-book/.cargo/config.toml
+tessoku-book/test.sh
+tessoku-book/submit.sh
+tessoku-book/open.sh
+tessoku-book/Cargo.lock
+tessoku-book/Cargo.toml
+tessoku-book/testcases
