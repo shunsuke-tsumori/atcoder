@@ -6,48 +6,6 @@ use std::fmt::Debug;
 use std::str::FromStr;
 
 /***********************************************************
-* I/O
-************************************************************/
-/// 与えられた行数 h, 列数 w に従い、
-/// 標準入力から h 行分の [T; w] を読み込んで Vec<Vec<T>> を返す。
-/// `is_1_indexed` が true の場合は、1-indexed として扱えるように先頭行・先頭列にダミーを挿入して返す。
-pub fn input_grid<T>(h: usize, w: usize, is_1_indexed: bool) -> Vec<Vec<T>>
-where
-    T: FromStr + Default,
-    <T as FromStr>::Err: Debug,
-{
-    if !is_1_indexed {
-        // 0-indexed
-        let mut grid = Vec::with_capacity(h);
-        for _ in 0..h {
-            input! {
-                row: [T; w],
-            }
-            grid.push(row);
-        }
-        grid
-    } else {
-        // 1-indexed
-        // 0 行目と 0 列目をダミーとして確保し、実際の入力は 1..=h, 1..=w のインデックスに格納する。
-        let mut grid = Vec::with_capacity(h + 1);
-
-        // 0 行目はダミーの空ベクタにしておく
-        grid.push(Vec::new());
-
-        for _ in 0..h {
-            input! {
-                row: [T; w],
-            }
-            let mut new_row = Vec::with_capacity(w + 1);
-            new_row.push(T::default()); // 0 列目のダミー
-            new_row.extend(row);
-            grid.push(new_row);
-        }
-        grid
-    }
-}
-
-/***********************************************************
 * Bitwise Calculations
 ************************************************************/
 /// 整数 `num` の `shift` ビット目が1であるかどうかを確認する。
@@ -220,6 +178,7 @@ fn main() {
     input! {
         N: usize,
         S: Chars,
-        A: [i64;N]
+        A: [i64;N],
+        LR: [[i64; 2]; Q],
     }
 }

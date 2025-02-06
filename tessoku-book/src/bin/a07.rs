@@ -122,10 +122,20 @@ where
         .collect()
 }
 
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
+        D: usize,
         N: usize,
-        S: Chars,
-        A: [i64;N]
+        LR: [[usize; 2]; N],
+    }
+    let mut cm = vec![0; D + 3];
+    for i in 0..N {
+        cm[LR[i][0]] += 1;
+        cm[LR[i][1] + 1] -= 1
+    }
+    for i in 1..D + 1 {
+        cm[i] += cm[i - 1];
+        println!("{}", cm[i]);
     }
 }

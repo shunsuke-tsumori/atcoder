@@ -125,7 +125,16 @@ where
 fn main() {
     input! {
         N: usize,
-        S: Chars,
-        A: [i64;N]
+        Q: usize,
+        A: [i64;N],
+        LR: [[usize; 2]; Q],
+    }
+    let mut cm = vec![0; N + 1];
+    for i in 0..N {
+        cm[i + 1] = cm[i] + A[i];
+    }
+    for i in 0..Q {
+        let ans = cm[LR[i][1]] - cm[LR[i][0] - 1];
+        println!("{}", ans);
     }
 }
