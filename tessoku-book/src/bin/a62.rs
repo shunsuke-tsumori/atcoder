@@ -122,6 +122,7 @@ where
 fn main() {
     input! {
         N: usize,
-        S: Chars
+        S: Chars,
+        A: [i64;N]
     }
 }

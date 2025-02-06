@@ -122,6 +122,15 @@ where
 fn main() {
     input! {
         N: usize,
-        S: Chars
+        X: i64,
+        A: [i64;N]
     }
+    for i in 0..N {
+        if A[i] == X {
+            println!("Yes");
+            return;
+        }
+    }
+    let ans = if A.contains(&X) {"Yes"} else {"No"};
+    println!("{}", ans);
 }
