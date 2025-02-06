@@ -24,6 +24,29 @@ fn has_bit(num: i64, shift: u32) -> bool {
 }
 
 /***********************************************************
+* String
+************************************************************/
+/// 与えられたイテレータの各要素を文字列に変換し、
+/// 指定された区切り文字で連結した1つの文字列を返す。
+///
+/// # 例
+/// ```
+/// let v = vec![1, 2, 3];
+/// let joined = join_with(v, " ");
+/// assert_eq!(joined, "1 2 3");
+/// ```
+fn join_with<I>(iter: I, sep: &str) -> String
+where
+    I: IntoIterator,
+    I::Item: std::fmt::Display,
+{
+    iter.into_iter()
+        .map(|item| item.to_string())
+        .collect::<Vec<String>>()
+        .join(sep)
+}
+
+/***********************************************************
 * Number Theory
 ************************************************************/
 /// 指定された整数の素因数分解を行う。
@@ -97,7 +120,6 @@ fn divisors(n: i64) -> Vec<i64> {
     l1.extend(l2);
     l1
 }
-
 
 /***********************************************************
 * Encoding
@@ -174,11 +196,46 @@ where
         .collect()
 }
 
+#[fastout]
 fn main() {
     input! {
+        H: usize,
+        W: usize,
         N: usize,
-        S: Chars,
-        A: [i64;N],
-        LR: [[i64; 2]; Q],
+    }
+    let mut imos = vec![vec![0; W]; H];
+    for _ in 0..N {
+        input! {
+            A: usize,
+            B: usize,
+            C: usize,
+            D: usize,
+        }
+        imos[A - 1][B - 1] += 1;
+        if C < H {
+            imos[C][B - 1] -= 1;
+        }
+        if D < W {
+            imos[A - 1][D] -= 1;
+        }
+        if C < H && D < W {
+            imos[C][D] += 1;
+        }
+    }
+    for i in 0..H {
+        for j in 0..W {
+            if i > 0 {
+                imos[i][j] += imos[i - 1][j];
+            }
+            if j > 0 {
+                imos[i][j] += imos[i][j - 1];
+            }
+            if i > 0 && j > 0 {
+                imos[i][j] -= imos[i - 1][j - 1];
+            }
+        }
+    }
+    for i in 0..H {
+        println!("{}", join_with(imos[i].iter(), " "));
     }
 }
