@@ -1,10 +1,10 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
+use ac_library::*;
 use proconio::marker::*;
 use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-use ac_library::*;
 
 /***********************************************************
 * Bitwise Calculations
@@ -122,7 +122,6 @@ fn divisors(n: i64) -> Vec<i64> {
     l1
 }
 
-
 /***********************************************************
 * Encoding
 ************************************************************/
@@ -225,12 +224,28 @@ where
         .collect()
 }
 
-#[fastout]  // インタラクティブでは外す
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        S: Chars,
-        A: [i64;N],
-        LR: [[i64; 2]; Q],
+        S: usize,
+        A: [usize;N],
+    }
+    // dp[i][j]: i番目までで合計jがあり得る場合、true
+    let mut dp = vec![vec![false; S + 1]; N + 1];
+    dp[0][0] = true;
+    for i in 0..N {
+        for j in 0..=S {
+            dp[i + 1][j] = dp[i][j] || dp[i + 1][j];
+            let nxt = j + A[i];
+            if nxt <= S {
+                dp[i + 1][nxt] = dp[i + 1][nxt] || dp[i][j];
+            }
+        }
+    }
+    if dp[N][S] {
+        println!("Yes");
+    } else {
+        println!("No");
     }
 }

@@ -1,10 +1,10 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
+use ac_library::*;
 use proconio::marker::*;
 use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-use ac_library::*;
 
 /***********************************************************
 * Bitwise Calculations
@@ -122,7 +122,6 @@ fn divisors(n: i64) -> Vec<i64> {
     l1
 }
 
-
 /***********************************************************
 * Encoding
 ************************************************************/
@@ -225,12 +224,30 @@ where
         .collect()
 }
 
-#[fastout]  // インタラクティブでは外す
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        S: Chars,
-        A: [i64;N],
-        LR: [[i64; 2]; Q],
+        A: [i64;N - 1],
+        B: [i64;N - 2],
     }
+    let mut dp = vec![0; N + 1];
+    let mut AA = vec![0; N + 1];
+    let mut BB = vec![0; N + 1];
+    for i in 0..N - 1 {
+        AA[i + 2] = A[i]
+    }
+    for i in 0..N - 2 {
+        BB[i + 3] = B[i]
+    }
+    for i in 2..=N {
+        dp[i] = dp[i - 1] + AA[i];
+        if i >= 3 {
+            dp[i] = dp[i].min(dp[i - 2] + BB[i]);
+        }
+    }
+    eprintln!("AA: {:?}", AA);
+    eprintln!("BB: {:?}", BB);
+    eprintln!("dp: {:?}", dp);
+    println!("{}", dp[N]);
 }

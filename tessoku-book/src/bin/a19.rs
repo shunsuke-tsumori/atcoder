@@ -229,8 +229,23 @@ where
 fn main() {
     input! {
         N: usize,
-        S: Chars,
-        A: [i64;N],
-        LR: [[i64; 2]; Q],
+        W: usize,
+        wv: [[usize; 2]; N],
     }
+    // dp[i][j]: i番目までで重さがWの時の価値の最大値
+    let mut dp = vec![vec![i64::MIN; W + 1]; N + 1];
+    dp[0][0] = 0;
+    for i in 0..N {
+        let w = wv[i][0];
+        let v = wv[i][1] as i64;
+        for j in 0..W + 1 {
+            dp[i+ 1][j] = dp[i][j].max(dp[i + 1][j]);
+            let nj = j + w;
+            if nj <= W {
+                dp[i + 1][nj] = dp[i + 1][nj].max(dp[i][j] + v);
+            }
+        }
+    }
+    let ans = dp[N].iter().max();
+    println!("{}", ans.unwrap());
 }
