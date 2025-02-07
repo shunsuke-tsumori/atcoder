@@ -1,10 +1,10 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
+use ac_library::*;
 use proconio::marker::*;
 use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-
 /***********************************************************
 * Bitwise Calculations
 ************************************************************/
@@ -21,6 +21,29 @@ use std::str::FromStr;
 /// 指定されたビット位置にビットが立っている場合は `true`、そうでない場合は `false` 。
 fn has_bit(num: i64, shift: u32) -> bool {
     ((num >> shift) & 1) == 1
+}
+
+/***********************************************************
+* String
+************************************************************/
+/// 与えられたイテレータの各要素を文字列に変換し、
+/// 指定された区切り文字で連結した1つの文字列を返す。
+///
+/// # 例
+/// ```
+/// let v = vec![1, 2, 3];
+/// let joined = join_with(v, " ");
+/// assert_eq!(joined, "1 2 3");
+/// ```
+fn join_with<I>(iter: I, sep: &str) -> String
+where
+    I: IntoIterator,
+    I::Item: std::fmt::Display,
+{
+    iter.into_iter()
+        .map(|item| item.to_string())
+        .collect::<Vec<String>>()
+        .join(sep)
 }
 
 /***********************************************************
@@ -98,7 +121,6 @@ fn divisors(n: i64) -> Vec<i64> {
     l1
 }
 
-
 /***********************************************************
 * Encoding
 ************************************************************/
@@ -174,11 +196,24 @@ where
         .collect()
 }
 
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        S: Chars,
         A: [i64;N],
-        LR: [[i64; 2]; Q],
+        D: usize,
+        LR: [[usize; 2]; D],
+    }
+    let mut st = Segtree::<Max<i64>>::new(N);
+    for i in 0..N {
+        st.set(i, A[i]);
+    }
+    for q in LR.iter() {
+        let l = q[0];
+        let r = q[1];
+        let mut ans1 = st.prod(0..l - 1);
+        let ans2 = st.prod(&r..&N);
+        let ans = ans1.max(ans2);
+        println!("{}", ans);
     }
 }

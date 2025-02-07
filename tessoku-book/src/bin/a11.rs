@@ -24,6 +24,29 @@ fn has_bit(num: i64, shift: u32) -> bool {
 }
 
 /***********************************************************
+* String
+************************************************************/
+/// 与えられたイテレータの各要素を文字列に変換し、
+/// 指定された区切り文字で連結した1つの文字列を返す。
+///
+/// # 例
+/// ```
+/// let v = vec![1, 2, 3];
+/// let joined = join_with(v, " ");
+/// assert_eq!(joined, "1 2 3");
+/// ```
+fn join_with<I>(iter: I, sep: &str) -> String
+where
+    I: IntoIterator,
+    I::Item: std::fmt::Display,
+{
+    iter.into_iter()
+        .map(|item| item.to_string())
+        .collect::<Vec<String>>()
+        .join(sep)
+}
+
+/***********************************************************
 * Number Theory
 ************************************************************/
 /// 指定された整数の素因数分解を行う。
@@ -174,11 +197,26 @@ where
         .collect()
 }
 
+#[fastout]  // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        S: Chars,
+        X: i64,
         A: [i64;N],
-        LR: [[i64; 2]; Q],
     }
+    let mut l = 0;
+    let mut r = N - 1;
+    while l <= r {
+        let mid = (l + r) / 2;
+        if A[mid] == X {
+            println!("{}", mid + 1);
+            return
+        }
+        else if A[mid] < X {
+            l = mid + 1;
+        } else {
+            r = mid - 1;
+        }
+    }
+    println!("{} {}", l, r)
 }

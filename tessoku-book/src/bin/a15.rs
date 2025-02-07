@@ -24,6 +24,29 @@ fn has_bit(num: i64, shift: u32) -> bool {
 }
 
 /***********************************************************
+* String
+************************************************************/
+/// 与えられたイテレータの各要素を文字列に変換し、
+/// 指定された区切り文字で連結した1つの文字列を返す。
+///
+/// # 例
+/// ```
+/// let v = vec![1, 2, 3];
+/// let joined = join_with(v, " ");
+/// assert_eq!(joined, "1 2 3");
+/// ```
+fn join_with<I>(iter: I, sep: &str) -> String
+where
+    I: IntoIterator,
+    I::Item: std::fmt::Display,
+{
+    iter.into_iter()
+        .map(|item| item.to_string())
+        .collect::<Vec<String>>()
+        .join(sep)
+}
+
+/***********************************************************
 * Number Theory
 ************************************************************/
 /// 指定された整数の素因数分解を行う。
@@ -102,6 +125,33 @@ fn divisors(n: i64) -> Vec<i64> {
 /***********************************************************
 * Encoding
 ************************************************************/
+/// 座標圧縮
+///
+/// # 引数
+/// - `a`: 座標圧縮を行う整数のベクター
+///
+/// # 戻り値
+/// 元のベクターの各要素を一意なランク（1始まり）に置換した新たなベクターを返す。
+///
+/// # 例
+/// ```
+/// let v = vec![40, 10, 20, 20, 30];
+/// let compressed = compress(&v);
+/// assert_eq!(compressed, vec![4, 1, 2, 2, 3]);
+/// ```
+fn compress(a: &[i64]) -> Vec<i64> {
+    let mut b = a.to_vec();
+    b.sort();
+    b.dedup();
+
+    let mut rank: HashMap<i64, i64> = HashMap::new();
+    for (i, &x) in b.iter().enumerate() {
+        rank.insert(x, i as i64 + 1);
+    }
+
+    a.iter().map(|&x| rank[&x]).collect()
+}
+
 /// ランレングス圧縮
 ///
 /// # 使用例
@@ -174,11 +224,12 @@ where
         .collect()
 }
 
+#[fastout]  // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        S: Chars,
         A: [i64;N],
-        LR: [[i64; 2]; Q],
     }
+    let ans = join_with(compress(&*A), " ");
+    println!("{}", ans);
 }

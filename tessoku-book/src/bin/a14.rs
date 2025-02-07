@@ -4,7 +4,7 @@ use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-
+use amplify::set;
 /***********************************************************
 * Bitwise Calculations
 ************************************************************/
@@ -21,6 +21,29 @@ use std::str::FromStr;
 /// 指定されたビット位置にビットが立っている場合は `true`、そうでない場合は `false` 。
 fn has_bit(num: i64, shift: u32) -> bool {
     ((num >> shift) & 1) == 1
+}
+
+/***********************************************************
+* String
+************************************************************/
+/// 与えられたイテレータの各要素を文字列に変換し、
+/// 指定された区切り文字で連結した1つの文字列を返す。
+///
+/// # 例
+/// ```
+/// let v = vec![1, 2, 3];
+/// let joined = join_with(v, " ");
+/// assert_eq!(joined, "1 2 3");
+/// ```
+fn join_with<I>(iter: I, sep: &str) -> String
+where
+    I: IntoIterator,
+    I::Item: std::fmt::Display,
+{
+    iter.into_iter()
+        .map(|item| item.to_string())
+        .collect::<Vec<String>>()
+        .join(sep)
 }
 
 /***********************************************************
@@ -174,11 +197,29 @@ where
         .collect()
 }
 
+#[fastout]  // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        S: Chars,
+        K: i64,
         A: [i64;N],
-        LR: [[i64; 2]; Q],
+        B: [i64;N],
+        C: [i64;N],
+        D: [i64;N],
     }
+    let mut cd = set![];
+    for i in 0..N {
+        for j in 0..N {
+            cd.insert(C[i] + D[j]);
+        }
+    }
+    for i in 0..N {
+        for j in 0..N {
+            if cd.contains(&(K - &(A[i] + B[j]))) {
+                println!("Yes");
+                return
+            }
+        }
+    }
+    println!("No");
 }
