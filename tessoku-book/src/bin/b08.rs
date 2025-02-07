@@ -1,4 +1,5 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
+use ac_library::*;
 use proconio::marker::*;
 use proconio::*;
 use std::collections::*;
@@ -121,10 +122,36 @@ fn divisors(n: i64) -> Vec<i64> {
     l1
 }
 
-
 /***********************************************************
 * Encoding
 ************************************************************/
+/// 座標圧縮
+///
+/// # 引数
+/// - `a`: 座標圧縮を行う整数のベクター
+///
+/// # 戻り値
+/// 元のベクターの各要素を一意なランク（1始まり）に置換した新たなベクターを返す。
+///
+/// # 例
+/// ```
+/// let v = vec![40, 10, 20, 20, 30];
+/// let compressed = compress(&v);
+/// assert_eq!(compressed, vec![4, 1, 2, 2, 3]);
+/// ```
+fn compress(a: &[i64]) -> Vec<i64> {
+    let mut b = a.to_vec();
+    b.sort();
+    b.dedup();
+
+    let mut rank: HashMap<i64, i64> = HashMap::new();
+    for (i, &x) in b.iter().enumerate() {
+        rank.insert(x, i as i64 + 1);
+    }
+
+    a.iter().map(|&x| rank[&x]).collect()
+}
+
 /// ランレングス圧縮
 ///
 /// # 使用例
@@ -197,12 +224,33 @@ where
         .collect()
 }
 
-#[fastout]  // インタラクティブでは外す
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        S: Chars,
-        A: [i64;N],
-        LR: [[i64; 2]; Q],
+        XY: [[i64; 2]; N],
+        Q: usize
+    }
+    let H = 1500;
+    let mut grid = vec![vec![0; H + 1]; H + 1];
+    for i in 0..N {
+        let x = XY[i][0] as usize;
+        let y = XY[i][1] as usize;
+        grid[x][y] += 1;
+    }
+    for i in 1..=H {
+        for j in 1..=H {
+            grid[i][j] += grid[i - 1][j] + grid[i][j - 1] - grid[i - 1][j - 1];
+        }
+    }
+    for _ in 0..Q {
+        input! {
+            a: usize,
+            b: usize,
+            c: usize,
+            d: usize
+        }
+        let crr = grid[c][d] - grid[c][b - 1] - grid[a - 1][d] + grid[a - 1][b - 1];
+        println!("{}", crr);
     }
 }

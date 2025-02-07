@@ -4,6 +4,7 @@ use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
+use ac_library::*;
 
 /***********************************************************
 * Bitwise Calculations
@@ -125,6 +126,33 @@ fn divisors(n: i64) -> Vec<i64> {
 /***********************************************************
 * Encoding
 ************************************************************/
+/// 座標圧縮
+///
+/// # 引数
+/// - `a`: 座標圧縮を行う整数のベクター
+///
+/// # 戻り値
+/// 元のベクターの各要素を一意なランク（1始まり）に置換した新たなベクターを返す。
+///
+/// # 例
+/// ```
+/// let v = vec![40, 10, 20, 20, 30];
+/// let compressed = compress(&v);
+/// assert_eq!(compressed, vec![4, 1, 2, 2, 3]);
+/// ```
+fn compress(a: &[i64]) -> Vec<i64> {
+    let mut b = a.to_vec();
+    b.sort();
+    b.dedup();
+
+    let mut rank: HashMap<i64, i64> = HashMap::new();
+    for (i, &x) in b.iter().enumerate() {
+        rank.insert(x, i as i64 + 1);
+    }
+
+    a.iter().map(|&x| rank[&x]).collect()
+}
+
 /// ランレングス圧縮
 ///
 /// # 使用例
@@ -200,9 +228,22 @@ where
 #[fastout]  // インタラクティブでは外す
 fn main() {
     input! {
+        T: usize,
         N: usize,
-        S: Chars,
-        A: [i64;N],
-        LR: [[i64; 2]; Q],
+        LR: [[usize; 2]; N],
     }
+    let mut imos = vec![0; T + 1];
+    for i in 0..N {
+        let l = LR[i][0];
+        let r = LR[i][1];
+        imos[l] += 1;
+        imos[r] -= 1;
+    }
+    for i in 1..T + 1 {
+        imos[i] += imos[i - 1];
+    }
+    for i in 0..T {
+        println!("{}", imos[i])
+    }
+
 }

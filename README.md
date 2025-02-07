@@ -53,3 +53,7 @@ fn main() {
     println!("16進数 {} -> {}", hex_str, num_from_hex);
 }
 ```
+
+### 言語的注意点
+
+- usizeのアンダーフローに注意（特に二分探索）
