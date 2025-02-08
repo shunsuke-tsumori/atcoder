@@ -7,6 +7,19 @@ use std::fmt::Debug;
 use std::str::FromStr;
 
 /***********************************************************
+* Consts
+************************************************************/
+const INF: i64 = 10_i64.pow(15);
+const MOD: i64 = 998244353_i64;
+const LOWERCASE: &str = "abcdefghijklmnopqrstuvwxyz";
+const UPPERCASE: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const DIGITS: &str = "0123456789";
+//ROLLING_HASH_MOD: i64 = 2305843009213693951_i64;
+const ROLLING_HASH_MOD: i64 = 8128812800000059_i64;
+const TAKAHASHI: &str = "Takahashi";
+const AOKI: &str = "Aoki";
+
+/***********************************************************
 * Macros
 ************************************************************/
 macro_rules! min {
@@ -54,6 +67,14 @@ macro_rules! chmax {
         } else {
             false
         }
+    }};
+}
+
+macro_rules! pad {
+    ($vec:expr, $($pad:expr),+ $(,)*) => {{
+        let mut padded = vec![$($pad),+];
+        padded.extend($vec);
+        padded
     }};
 }
 
@@ -274,6 +295,41 @@ where
         .iter()
         .flat_map(|(value, count)| std::iter::repeat(value.clone()).take(*count))
         .collect()
+}
+
+/***********************************************************
+* Binary Search
+************************************************************/
+/// スライス `v` に対して、要素 `x` を左側（最初に `x` 以上となる位置）に挿入するためのインデックスを返す。
+/// つまり、`v[..i]` は全て `x` より小さく、`v[i..]` は `x` 以上となる最小の `i` を返す。
+pub fn bisect_left<T: Ord>(v: &[T], x: &T) -> i32 {
+    let mut left = 0i32;
+    let mut right = v.len() as i32 - 1;
+    while left <= right {
+        let mid = (left + right) / 2;
+        if v[mid as usize] < *x {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+    left
+}
+
+/// スライス `v` に対して、要素 `x` を右側（最初に `x` より大きくなる位置）に挿入するためのインデックスを返す。
+/// つまり、`v[..i]` は全て `x` 以下で、`v[i..]` は `x` より大きい最小の `i` を返す。
+pub fn bisect_right<T: Ord>(v: &[T], x: &T) -> i32 {
+    let mut left = 0i32;
+    let mut right = v.len() as i32 - 1;
+    while left <= right {
+        let mid = (left + right) / 2;
+        if v[mid as usize] <= *x {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+    left
 }
 
 #[fastout]  // インタラクティブでは外す
