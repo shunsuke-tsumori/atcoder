@@ -1,10 +1,69 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
+use ac_library::*;
 use proconio::marker::*;
 use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-use ac_library::*;
+
+/***********************************************************
+* Macros
+************************************************************/
+macro_rules! min {
+    ($a:expr $(,)*) => {{
+        $a
+    }};
+    ($a:expr, $b:expr $(,)*) => {{
+        std::cmp::min($a, $b)
+    }};
+    ($a:expr, $($rest:expr),+ $(,)*) => {{
+        std::cmp::min($a, min!($($rest),+))
+    }};
+}
+
+macro_rules! max {
+    ($a:expr $(,)*) => {{
+        $a
+    }};
+    ($a:expr, $b:expr $(,)*) => {{
+        std::cmp::max($a, $b)
+    }};
+    ($a:expr, $($rest:expr),+ $(,)*) => {{
+        std::cmp::max($a, max!($($rest),+))
+    }};
+}
+
+macro_rules! chmin {
+    ($base:expr, $($cmps:expr),+ $(,)*) => {{
+        let cmp_min = min!($($cmps),+);
+        if $base > cmp_min {
+            $base = cmp_min;
+            true
+        } else {
+            false
+        }
+    }};
+}
+
+macro_rules! chmax {
+    ($base:expr, $($cmps:expr),+ $(,)*) => {{
+        let cmp_max = max!($($cmps),+);
+        if $base < cmp_max {
+            $base = cmp_max;
+            true
+        } else {
+            false
+        }
+    }};
+}
+
+macro_rules! pad {
+    ($vec:expr, $($pad:expr),+ $(,)*) => {{
+        let mut padded = vec![$($pad),+];
+        padded.extend($vec);
+        padded
+    }};
+}
 
 /***********************************************************
 * Bitwise Calculations
@@ -122,7 +181,6 @@ fn divisors(n: i64) -> Vec<i64> {
     l1
 }
 
-
 /***********************************************************
 * Encoding
 ************************************************************/
@@ -170,7 +228,7 @@ fn compress(a: &[i64]) -> Vec<i64> {
 ///
 pub fn run_length_encode<I, T>(data: I) -> Vec<(T, usize)>
 where
-    I: IntoIterator<Item = T>,
+    I: IntoIterator<Item=T>,
     T: Eq + Clone,
 {
     let mut iter = data.into_iter();
@@ -225,12 +283,37 @@ where
         .collect()
 }
 
-#[fastout]  // インタラクティブでは外す
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        S: Chars,
-        A: [i64;N],
-        LR: [[i64; 2]; Q],
+        mut PA: [[usize; 2]; N],
     }
+    let mut PA = pad!(PA, vec![0, 0]);
+
+    // dp[l][r]: [left, right] が残っている場合の得点最大値
+    let mut dp = vec![vec![0; N + 2]; N + 2];
+    for length in (1..=N - 1).rev() {
+        for lft in 1..=(N - length + 1) {
+            let r = lft + length - 1;
+            let mut p_rp1 = 0;
+            if r < N {
+                if PA[r + 1][0] <= r && PA[r + 1][0] >= lft {
+                    p_rp1 += PA[r + 1][1];
+                }
+            }
+            let mut p_lm1 = 0;
+            if lft > 1 {
+                if PA[lft - 1][0] <= r && PA[lft - 1][0] >= lft {
+                    p_lm1 += PA[lft - 1][1];
+                }
+            }
+            dp[lft][r] = max!(dp[lft - 1][r] + p_lm1, dp[lft][r + 1] + p_rp1)
+        }
+    }
+    let mut ans = 0;
+    for i in 1..=N {
+        chmax!(ans, dp[i][i]);
+    }
+    println!("{}", ans);
 }

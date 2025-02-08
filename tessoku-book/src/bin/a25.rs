@@ -1,10 +1,61 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
+use ac_library::*;
 use proconio::marker::*;
 use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-use ac_library::*;
+
+/***********************************************************
+* Macros
+************************************************************/
+macro_rules! min {
+    ($a:expr $(,)*) => {{
+        $a
+    }};
+    ($a:expr, $b:expr $(,)*) => {{
+        std::cmp::min($a, $b)
+    }};
+    ($a:expr, $($rest:expr),+ $(,)*) => {{
+        std::cmp::min($a, min!($($rest),+))
+    }};
+}
+
+macro_rules! max {
+    ($a:expr $(,)*) => {{
+        $a
+    }};
+    ($a:expr, $b:expr $(,)*) => {{
+        std::cmp::max($a, $b)
+    }};
+    ($a:expr, $($rest:expr),+ $(,)*) => {{
+        std::cmp::max($a, max!($($rest),+))
+    }};
+}
+
+macro_rules! chmin {
+    ($base:expr, $($cmps:expr),+ $(,)*) => {{
+        let cmp_min = min!($($cmps),+);
+        if $base > cmp_min {
+            $base = cmp_min;
+            true
+        } else {
+            false
+        }
+    }};
+}
+
+macro_rules! chmax {
+    ($base:expr, $($cmps:expr),+ $(,)*) => {{
+        let cmp_max = max!($($cmps),+);
+        if $base < cmp_max {
+            $base = cmp_max;
+            true
+        } else {
+            false
+        }
+    }};
+}
 
 /***********************************************************
 * Bitwise Calculations
@@ -122,7 +173,6 @@ fn divisors(n: i64) -> Vec<i64> {
     l1
 }
 
-
 /***********************************************************
 * Encoding
 ************************************************************/
@@ -225,12 +275,60 @@ where
         .collect()
 }
 
-#[fastout]  // インタラクティブでは外す
+/***********************************************************
+* Binary Search
+************************************************************/
+/// スライス `v` に対して、要素 `x` を左側（最初に `x` 以上となる位置）に挿入するためのインデックスを返す。
+/// つまり、`v[..i]` は全て `x` より小さく、`v[i..]` は `x` 以上となる最小の `i` を返す。
+pub fn bisect_left<T: Ord>(v: &[T], x: &T) -> i32 {
+    let mut left = 0i32;
+    let mut right = v.len() as i32 - 1;
+    while left <= right {
+        let mid = (left + right) / 2;
+        if v[mid as usize] < *x {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+    left
+}
+
+/// スライス `v` に対して、要素 `x` を右側（最初に `x` より大きくなる位置）に挿入するためのインデックスを返す。
+/// つまり、`v[..i]` は全て `x` 以下で、`v[i..]` は `x` より大きい最小の `i` を返す。
+pub fn bisect_right<T: Ord>(v: &[T], x: &T) -> i32 {
+    let mut left = 0i32;
+    let mut right = v.len() as i32 - 1;
+    while left <= right {
+        let mid = (left + right) / 2;
+        if v[mid as usize] <= *x {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+    left
+}
+
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
-        N: usize,
-        S: Chars,
-        A: [i64;N],
-        LR: [[i64; 2]; Q],
+        H: usize,
+        W: usize,
+        c: [Chars;H]
     }
+    let mut dp = vec![vec![0i64; W]; H];
+
+    dp[0][0] = 1;
+    for i in 0..H {
+        for j in 0..W {
+            if i > 0 && c[i][j] == '.' {
+                dp[i][j] += dp[i - 1][j];
+            }
+            if j > 0 && c[i][j] == '.' {
+                dp[i][j] += dp[i][j - 1];
+            }
+        }
+    }
+    println!("{}", dp[H - 1][W - 1]);
 }

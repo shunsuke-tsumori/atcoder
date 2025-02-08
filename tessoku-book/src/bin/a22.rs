@@ -1,10 +1,82 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
+use ac_library::*;
 use proconio::marker::*;
 use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-use ac_library::*;
+
+/***********************************************************
+* Consts
+************************************************************/
+const INF: i64 = 10_i64.pow(15);
+const MOD: i64 = 998244353_i64;
+const LOWERCASE: &str = "abcdefghijklmnopqrstuvwxyz";
+const UPPERCASE: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const DIGITS: &str = "0123456789";
+//ROLLING_HASH_MOD: i64 = 2305843009213693951_i64;
+const ROLLING_HASH_MOD: i64 = 8128812800000059_i64;
+const TAKAHASHI: &str = "Takahashi";
+const AOKI: &str = "Aoki";
+
+/***********************************************************
+* Macros
+************************************************************/
+macro_rules! min {
+    ($a:expr $(,)*) => {{
+        $a
+    }};
+    ($a:expr, $b:expr $(,)*) => {{
+        std::cmp::min($a, $b)
+    }};
+    ($a:expr, $($rest:expr),+ $(,)*) => {{
+        std::cmp::min($a, min!($($rest),+))
+    }};
+}
+
+macro_rules! max {
+    ($a:expr $(,)*) => {{
+        $a
+    }};
+    ($a:expr, $b:expr $(,)*) => {{
+        std::cmp::max($a, $b)
+    }};
+    ($a:expr, $($rest:expr),+ $(,)*) => {{
+        std::cmp::max($a, max!($($rest),+))
+    }};
+}
+
+macro_rules! chmin {
+    ($base:expr, $($cmps:expr),+ $(,)*) => {{
+        let cmp_min = min!($($cmps),+);
+        if $base > cmp_min {
+            $base = cmp_min;
+            true
+        } else {
+            false
+        }
+    }};
+}
+
+macro_rules! chmax {
+    ($base:expr, $($cmps:expr),+ $(,)*) => {{
+        let cmp_max = max!($($cmps),+);
+        if $base < cmp_max {
+            $base = cmp_max;
+            true
+        } else {
+            false
+        }
+    }};
+}
+
+macro_rules! pad {
+    ($vec:expr, $($pad:expr),+ $(,)*) => {{
+        let mut padded = vec![$($pad),+];
+        padded.extend($vec);
+        padded
+    }};
+}
 
 /***********************************************************
 * Bitwise Calculations
@@ -122,7 +194,6 @@ fn divisors(n: i64) -> Vec<i64> {
     l1
 }
 
-
 /***********************************************************
 * Encoding
 ************************************************************/
@@ -225,12 +296,21 @@ where
         .collect()
 }
 
-#[fastout]  // インタラクティブでは外す
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        S: Chars,
-        A: [i64;N],
-        LR: [[i64; 2]; Q],
+        A: [usize;N-1],
+        B: [usize;N-1],
     }
+    let A = pad!(A, 0);
+    let B = pad!(B, 0);
+
+    let mut dp = vec![-INF; N + 1];
+    dp[1] = 0;
+    for i in 1..N {
+        chmax!(dp[A[i]], dp[i] + 100);
+        chmax!(dp[B[i]], dp[i] + 150);
+    }
+    println!("{}", dp[N])
 }
