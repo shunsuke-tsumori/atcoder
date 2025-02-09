@@ -5,7 +5,7 @@ use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-use num_traits::abs;
+
 /***********************************************************
 * Consts
 ************************************************************/
@@ -194,7 +194,6 @@ fn divisors(n: i64) -> Vec<i64> {
     l1
 }
 
-
 /***********************************************************
 * Encoding
 ************************************************************/
@@ -332,19 +331,60 @@ pub fn bisect_right<T: Ord>(v: &[T], x: &T) -> i32 {
     left
 }
 
-#[fastout]  // インタラクティブでは外す
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        h: [i64;N],
+        M: usize,
+        AB: [[usize;2]; M],
     }
-    let mut dp = vec![INF; N +1];
-    dp[1] = 0;
-    for i in 1..N {
-        chmin!(dp[i + 1], dp[i] + abs(h[i - 1] - h[i]));
-        if i < N -1 {
-            chmin!(dp[i + 2], dp[i] + abs(h[i - 1] - h[i + 1]));
+    let mut uf = Dsu::new(N);
+    let mut cables = vec![];
+    for i in 0..M {
+        let mut a = AB[i][0];
+        let mut b = AB[i][1];
+        a -= 1;
+        b -= 1;
+        if uf.same(a, b) {
+            cables.push((i, a))
+        } else {
+            uf.merge(a, b);
         }
     }
-    println!("{}", dp[N])
+
+    let mut roots: HashSet<_> = (0..N).filter(|&i| uf.leader(i) == i).collect();
+    println!("{}", roots.len() - 1);
+
+    let mut ans = vec![];
+    for (i, a) in cables {
+        if roots.len() == 1 {
+            break;
+        }
+        let cr = match roots.iter().next().cloned() {
+            Some(x) => x,
+            None => break,
+        };
+        roots.remove(&cr);
+        if cr == uf.leader(a) {
+            let cr_yobi = match roots.iter().next().cloned() {
+                Some(x) => x,
+                None => break,
+            };
+            roots.remove(&cr_yobi);
+            ans.push((i + 1, a + 1, cr_yobi + 1));
+            uf.merge(a, cr_yobi);
+            let new_rt = uf.leader(a);
+            roots.insert(new_rt);
+        } else {
+            ans.push((i + 1, a + 1, cr + 1));
+            let rmv_r = uf.leader(a);
+            roots.remove(&rmv_r);
+            uf.merge(a, cr);
+            let new_rt = uf.leader(a);
+            roots.insert(new_rt);
+        }
+    }
+    for triple in ans {
+        println!("{} {} {}", triple.0, triple.1, triple.2);
+    }
 }

@@ -5,7 +5,7 @@ use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-use num_traits::abs;
+
 /***********************************************************
 * Consts
 ************************************************************/
@@ -336,15 +336,39 @@ pub fn bisect_right<T: Ord>(v: &[T], x: &T) -> i32 {
 fn main() {
     input! {
         N: usize,
-        h: [i64;N],
     }
-    let mut dp = vec![INF; N +1];
-    dp[1] = 0;
-    for i in 1..N {
-        chmin!(dp[i + 1], dp[i] + abs(h[i - 1] - h[i]));
-        if i < N -1 {
-            chmin!(dp[i + 2], dp[i] + abs(h[i - 1] - h[i + 1]));
+    let mut dice = vec![];
+    for _ in 0..N {
+        input! {
+            K: usize,
+            A: [i32;K]
+        }
+        let mut cnt: HashMap<i32, i32> = HashMap::new();
+        for a in &A {
+            *cnt.entry(*a).or_insert(0) += 1;
+        }
+        dice.push((cnt, K));
+    }
+
+    let calc = |dice1: &(HashMap<i32, i32>, usize),
+                dice2: &(HashMap<i32, i32>, usize)| -> f64 {
+        let (ref cnt1, k1) = *dice1;
+        let (ref cnt2, k2) = *dice2;
+        let mut s = 0.0;
+        for (face, &c1) in cnt1.iter() {
+            if let Some(&c2) = cnt2.get(face) {
+                s += (c1 as f64 * c2 as f64) / (k1 as f64 * k2 as f64);
+            }
+        }
+        s
+    };
+
+    let mut ans = 0.0;
+    for i in 0..N {
+        for j in i+1..N {
+            let crr = calc(&dice[i], &dice[j]);
+            chmax!(ans, crr);
         }
     }
-    println!("{}", dp[N])
+    println!("{}", ans);
 }

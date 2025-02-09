@@ -5,7 +5,7 @@ use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-use num_traits::abs;
+
 /***********************************************************
 * Consts
 ************************************************************/
@@ -336,15 +336,16 @@ pub fn bisect_right<T: Ord>(v: &[T], x: &T) -> i32 {
 fn main() {
     input! {
         N: usize,
-        h: [i64;N],
+        M: usize,
+        A: [usize;M],
     }
-    let mut dp = vec![INF; N +1];
-    dp[1] = 0;
-    for i in 1..N {
-        chmin!(dp[i + 1], dp[i] + abs(h[i - 1] - h[i]));
-        if i < N -1 {
-            chmin!(dp[i + 2], dp[i] + abs(h[i - 1] - h[i + 1]));
+    let mut ans = vec![];
+    for i in 1..=N{
+        if A.contains(&i) {
+            continue
         }
+        ans.push(i);
     }
-    println!("{}", dp[N])
+    println!("{}", ans.len());
+    println!("{}", join_with(ans, " "))
 }

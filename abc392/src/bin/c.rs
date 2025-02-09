@@ -5,7 +5,7 @@ use proconio::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::str::FromStr;
-use num_traits::abs;
+
 /***********************************************************
 * Consts
 ************************************************************/
@@ -194,7 +194,6 @@ fn divisors(n: i64) -> Vec<i64> {
     l1
 }
 
-
 /***********************************************************
 * Encoding
 ************************************************************/
@@ -332,19 +331,24 @@ pub fn bisect_right<T: Ord>(v: &[T], x: &T) -> i32 {
     left
 }
 
-#[fastout]  // インタラクティブでは外す
+#[fastout] // インタラクティブでは外す
 fn main() {
     input! {
         N: usize,
-        h: [i64;N],
+        P: [usize;N],
+        Q: [usize;N],
     }
-    let mut dp = vec![INF; N +1];
-    dp[1] = 0;
-    for i in 1..N {
-        chmin!(dp[i + 1], dp[i] + abs(h[i - 1] - h[i]));
-        if i < N -1 {
-            chmin!(dp[i + 2], dp[i] + abs(h[i - 1] - h[i + 1]));
-        }
+    let P = pad!(P, 0);
+    let Q = pad!(Q, 0);
+    let mut QQ = vec![0; N + 1];
+    for i in 1..=N {
+        QQ[Q[i]] = i
     }
-    println!("{}", dp[N])
+
+    let mut ans = vec![0; N + 1];
+    for i in 1..=N {
+        ans[i] = Q[P[QQ[i]]]
+    }
+    let mut ans = &ans[1..];
+    println!("{}", join_with(ans, " "));
 }
