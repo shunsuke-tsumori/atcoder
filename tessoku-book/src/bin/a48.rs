@@ -213,7 +213,11 @@ fn annealing(state: State, input: &Input) -> State {
     let T_end = 1e-4;
 
     let mut route = state.visited_order.clone();
+    let mut current_total_cost = state.calc_score(&input.coordinates);
+
     let mut turn = 0;
+    let mut non_improv_count = 0; // 非改善の移動の回数
+    let mut total_moves = 0; // 総移動回数
 
     while turn % 100 != 0 || !time_keeper.is_time_over() {
         // 温度の更新：経過時間の割合に応じて指数関数的に下げる
@@ -242,12 +246,44 @@ fn annealing(state: State, input: &Input) -> State {
         let delta = new_cost - current_cost;
 
         // 改善なら常に受容、非改善の場合は exp(-delta/T) の確率で受容する
-        if delta < 0.0 || rng.gen::<f64>() < (-delta / T).exp() {
+        let accept = if delta < 0.0 {
+            true
+        } else if rng.gen::<f64>() < (-delta / T).exp() {
+            non_improv_count += 1;
+            true
+        } else {
+            false
+        };
+
+        if accept {
+            total_moves += 1;
             route[l..=r].reverse();
+            current_total_cost += delta;
+        }
+
+        if turn % 1000 == 0 {
+            if total_moves > 0 {
+                eprintln!(
+                    "Turn {}: T = {:.3}, Current Cost = {:.3}, non-improv accepted: {} ({:.2}%)",
+                    turn,
+                    T,
+                    current_total_cost,
+                    non_improv_count,
+                    (non_improv_count as f64) / (total_moves as f64) * 100.0
+                );
+            }
         }
         turn += 1;
     }
-    // eprintln!("turn: {}", turn);
+    if total_moves > 0 {
+        eprintln!(
+            "Total turns: {}, non-improv accepted: {} / {} ({:.2}%)",
+            turn,
+            non_improv_count,
+            total_moves,
+            (non_improv_count as f64) / (total_moves as f64) * 100.0
+        );
+    }
     State {
         visited: vec![true; input.N],
         visited_order: route,
