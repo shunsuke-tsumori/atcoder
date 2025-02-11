@@ -215,6 +215,9 @@ fn annealing(state: State, input: &Input) -> State {
     let mut route = state.visited_order.clone();
     let mut current_total_cost = state.calc_score(&input.coordinates);
 
+    let mut best_route = route.clone();
+    let mut best_total_cost = current_total_cost;
+
     let mut turn = 0;
     let mut non_improv_count = 0; // 非改善の移動の回数
     let mut total_moves = 0; // 総移動回数
@@ -259,34 +262,43 @@ fn annealing(state: State, input: &Input) -> State {
             total_moves += 1;
             route[l..=r].reverse();
             current_total_cost += delta;
+            if current_total_cost < best_total_cost {
+                best_total_cost = current_total_cost;
+                best_route = route.clone();
+            }
         }
 
-        if turn % 1000 == 0 {
-            if total_moves > 0 {
-                eprintln!(
-                    "Turn {}: T = {:.3}, Current Cost = {:.3}, non-improv accepted: {} ({:.2}%)",
+        if cfg!(debug_assertions) {
+            if turn % 1000 == 0 {
+                if total_moves > 0 {
+                    eprintln!(
+                    "Turn {}: T = {:.3}, Current Cost = {:.3}, Best Cost = {:.3}, non-improv accepted: {} ({:.2}%)",
                     turn,
                     T,
                     current_total_cost,
+                    best_total_cost,
                     non_improv_count,
                     (non_improv_count as f64) / (total_moves as f64) * 100.0
                 );
+                }
             }
         }
         turn += 1;
     }
-    if total_moves > 0 {
-        eprintln!(
-            "Total turns: {}, non-improv accepted: {} / {} ({:.2}%)",
-            turn,
-            non_improv_count,
-            total_moves,
-            (non_improv_count as f64) / (total_moves as f64) * 100.0
-        );
+    if cfg!(debug_assertions) {
+        if total_moves > 0 {
+            eprintln!(
+                "Total turns: {}, non-improv accepted: {} / {} ({:.2}%)",
+                turn,
+                non_improv_count,
+                total_moves,
+                (non_improv_count as f64) / (total_moves as f64) * 100.0
+            );
+        }
     }
     State {
         visited: vec![true; input.N],
-        visited_order: route,
+        visited_order: best_route,
     }
 }
 
