@@ -151,8 +151,8 @@ impl State {
     }
 
     #[inline(always)]
-    fn is_done(&self) -> bool {
-        true
+    fn is_done(&self, N: usize) -> bool {
+        self.visited_order.len() >= N
     }
 
     #[inline(always)]
@@ -162,7 +162,16 @@ impl State {
     }
 
     #[inline(always)]
-    fn update(&mut self) {}
+    fn is_visitable(&self, next_index: usize) -> bool {
+        !self.visited[next_index]
+    }
+
+    #[inline(always)]
+    fn dist_to_next(&self, next_index: usize, coordinates: &Vec<(i64, i64)>) -> f64 {
+        let current_coordinate = coordinates[self.visited_order[self.visited_order.len() - 1]];
+        let next_coordinate = coordinates[next_index];
+        dist(current_coordinate, next_coordinate)
+    }
 
     #[inline(always)]
     fn calc_score(&self, coordinates: Vec<(i64, i64)>) -> f64 {
@@ -199,9 +208,23 @@ fn dist(x1: (i64, i64), x2: (i64, i64)) -> f64 {
 
 fn greedy_solution(input: Input) -> State {
     let mut state = State::new(input.N);
-    for i in 1..input.N {
-        state.advance(i);
+
+    while !state.is_done(input.N) {
+        let mut min_score = std::f64::MAX;
+        let mut min_index = 0;
+        for i in 0..input.N {
+            if state.is_visitable(i) {
+                let score = state.dist_to_next(i, &input.coordinates);
+                if score < min_score {
+                    min_score = score;
+                    min_index = i;
+                }
+            }
+        }
+        state.advance(min_index);
     }
+
+    // 最後はスタートに戻る
     state.advance(0);
     state
 }
