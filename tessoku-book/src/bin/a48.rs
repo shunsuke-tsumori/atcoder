@@ -2,10 +2,10 @@
 use proconio::input;
 use rand::distributions::Distribution;
 use rand::distributions::Uniform;
+use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 use std::io::Write;
 use std::time::{Duration, Instant};
-
 /***********************************************************
 * Consts
 ************************************************************/
@@ -204,14 +204,27 @@ fn greedy_solution(input: &Input) -> State {
     state
 }
 
-fn two_opt(state: State, input: &Input) -> State {
+fn annealing(state: State, input: &Input) -> State {
     let mut rng = Pcg64Mcg::new(42);
-    let mut time_keeper = TimeKeeper::new(Duration::from_millis(990));
+    let time_keeper = TimeKeeper::new(Duration::from_millis(990));
+
+    // 焼きなまし法の温度パラメータ（初期温度 T0 と終了温度 T_end）
+    let T0: f64 = 1000.0;
+    let T_end = 1e-4;
 
     let mut route = state.visited_order.clone();
     let mut turn = 0;
 
     while turn % 100 != 0 || !time_keeper.is_time_over() {
+        // 温度の更新：経過時間の割合に応じて指数関数的に下げる
+        let elapsed = Instant::now()
+            .duration_since(time_keeper.start_time)
+            .as_secs_f64();
+        let total: f64 = time_keeper.time_threshold.as_secs_f64();
+        let t_frac: f64 = elapsed / total;
+        let T = T0 * (T_end / T0).powf(t_frac);
+
+        // ランダムに2-opt 反転区間 [l, r] を選ぶ
         let l_range = Uniform::from(1..=input.N - 2);
         let l = l_range.sample(&mut rng);
         let r_range = Uniform::from((l + 1)..=input.N - 1);
@@ -227,13 +240,14 @@ fn two_opt(state: State, input: &Input) -> State {
         let new_cost = dist(input.coordinates[a], input.coordinates[c])
             + dist(input.coordinates[b], input.coordinates[d]);
         let delta = new_cost - current_cost;
-        if delta < 0.0 {
-            // 改善なら区間 [l, r] を反転
+
+        // 改善なら常に受容、非改善の場合は exp(-delta/T) の確率で受容する
+        if delta < 0.0 || rng.gen::<f64>() < (-delta / T).exp() {
             route[l..=r].reverse();
         }
         turn += 1;
     }
-    eprintln!("turn: {}", turn);
+    // eprintln!("turn: {}", turn);
     State {
         visited: vec![true; input.N],
         visited_order: route,
@@ -243,7 +257,7 @@ fn two_opt(state: State, input: &Input) -> State {
 fn main() {
     let input = Input::read_input();
     let initial_solution = greedy_solution(&input);
-    let optimized_solution = two_opt(initial_solution, &input);
+    let optimized_solution = annealing(initial_solution, &input);
     optimized_solution.print_order();
 }
 
