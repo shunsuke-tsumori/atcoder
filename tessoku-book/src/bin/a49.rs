@@ -2,10 +2,8 @@
 use proconio::input;
 use std::cmp::Reverse;
 
-/***********************************************************
-* Consts
-************************************************************/
-const BEAM_WIDTH: usize = 30_000;
+const END_TURN: usize = 100;
+const BEAM_WIDTH: usize = 60_000;
 
 /***********************************************************
 * Input
@@ -40,11 +38,11 @@ impl Input {
 /***********************************************************
 * State
 ************************************************************/
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 struct State {
     x: [i8; 20],
-    turn: u16,
-    history: Vec<bool>,
+    turn: usize,
+    history: [bool; END_TURN],  // 各ターンの操作記録。false: A, true: B
     score: usize,
 }
 
@@ -54,34 +52,39 @@ impl State {
         Self {
             x: [0; 20],
             turn: 0,
-            history: Vec::new(),
+            history: [false; END_TURN],
             score: 0,
         }
     }
 
-    #[inline(always)]
-    fn is_done(&self, T: usize) -> bool {
-        (self.turn as usize) >= T
-    }
-
-    // action が +1 なら操作 A（対象に +1）、-1 なら操作 B（対象に -1）を意味する。
+    // action が +1 なら操作 A、-1 なら操作 B とする。
     #[inline(always)]
     fn operate(&self, p: usize, q: usize, r: usize, action: i8) -> Self {
-        let mut new_state = self.clone();
-
-        new_state.x[p] += action;
-        new_state.x[q] += action;
-        new_state.x[r] += action;
-
-        new_state.score += new_state.x.iter().filter(|&&v| v == 0).count();
-        new_state.turn += 1;
-        new_state.history.push(action != 1);
-        new_state
+        let mut new_x = self.x;
+        new_x[p] += action;
+        new_x[q] += action;
+        new_x[r] += action;
+        // 現在の状態で x[j]==0 となっている要素数を加点
+        let mut add_score = 0;
+        for &v in new_x.iter() {
+            if v == 0 {
+                add_score += 1;
+            }
+        }
+        // history をコピーして、現在の turn 番目に今回の操作を記録する。
+        let mut new_history = self.history;
+        new_history[self.turn] = action != 1; // action==1なら false (A), それ以外なら true (B)
+        Self {
+            x: new_x,
+            turn: self.turn + 1,
+            history: new_history,
+            score: self.score + add_score,
+        }
     }
 
     fn print_history(&self) {
-        for &b in self.history.iter() {
-            if b {
+        for i in 0..self.turn {
+            if self.history[i] {
                 println!("B");
             } else {
                 println!("A");
@@ -94,7 +97,7 @@ impl State {
 * Solution
 ************************************************************/
 fn beam_search(input: &Input) -> State {
-    let mut beam: Vec<State> = Vec::new();
+    let mut beam: Vec<State> = Vec::with_capacity(BEAM_WIDTH);
     beam.push(State::new());
 
     for turn in 0..input.T {
@@ -103,20 +106,18 @@ fn beam_search(input: &Input) -> State {
             let p = input.P[turn];
             let q = input.Q[turn];
             let r = input.R[turn];
-
             next_beam.push(state.operate(p, q, r, 1));
             next_beam.push(state.operate(p, q, r, -1));
         }
-        // もし候補状態が膨大になったら、得点が高い状態上位 BEAM_WIDTH 件だけを残す
+        // 状態数がビーム幅を超えたら、部分ソートで上位 BEAM_WIDTH 件のみを残す
         if next_beam.len() > BEAM_WIDTH {
             next_beam.select_nth_unstable_by_key(BEAM_WIDTH, |s| Reverse(s.score));
             next_beam.truncate(BEAM_WIDTH);
         }
         beam = next_beam;
     }
-
-    // 累積得点が最大の状態を選ぶ
-    beam.iter().max_by_key(|s| s.score).unwrap().clone()
+    // beam 内で最大の累積得点を持つ状態を返す
+    *beam.iter().max_by_key(|s| s.score).unwrap()
 }
 
 fn main() {
