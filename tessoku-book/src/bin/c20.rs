@@ -4,6 +4,7 @@ use proconio::input;
 use proconio::source::line::LineSource;
 use rand::distributions::Distribution;
 use rand::distributions::Uniform;
+use rand::seq::SliceRandom;
 use rand_pcg::Pcg64Mcg;
 use std::collections::VecDeque;
 use std::io::{stdin, stdout, BufReader, Write};
@@ -126,8 +127,16 @@ struct Input {
 impl Input {
     #[inline(always)]
     fn read_input() -> Self {
-        input! {}
-        Self {}
+        input! {
+            N: usize,
+            K: usize,
+            L: usize,
+            AB: [(usize, usize); K],
+            C: [[usize; N]; N],
+        }
+        let A = AB.iter().map(|&(a, _)| a).collect();
+        let B = AB.iter().map(|&(_, b)| b).collect();
+        Self { N, K, L, A, B, C }
     }
 }
 
@@ -135,12 +144,14 @@ impl Input {
 * State
 ************************************************************/
 #[derive(Debug, Clone)]
-struct State {}
+struct State {
+    alloc: Vec<usize>,
+}
 
 impl State {
     #[inline(always)]
-    fn new() -> Self {
-        Self {}
+    fn new(alloc: Vec<usize>) -> Self {
+        Self { alloc }
     }
 
     #[inline(always)]
@@ -158,7 +169,9 @@ impl State {
 
     #[inline(always)]
     fn print_allocations(&self) {
-    
+        for &a in &self.alloc {
+            println!("{}", a);
+        }
     }
 }
 
@@ -166,17 +179,29 @@ impl State {
 * Solution
 ************************************************************/
 fn gen_initial_state(input: &Input) -> State {
+    let mut rng = Pcg64Mcg::new(42);
+    let mut alloc: Vec<usize> = Vec::with_capacity(input.K);
+    for i in 1..=input.L {
+        alloc.push(i);
+    }
+    let uniform = Uniform::from(1..=input.L);
+    for _ in input.L..input.K {
+        alloc.push(uniform.sample(&mut rng));
+    }
+    alloc.shuffle(&mut rng);
+    State::new(alloc)
 }
 
 fn annealing(input: &Input, initial_state: &State) -> State {
     initial_state.clone()
 }
+
 fn main() {
     let input = Input::read_input();
 
     let mut initial_state = gen_initial_state(&input);
     let mut state = annealing(&input, &initial_state);
-    state.print_allocations()
+    state.print_allocations();
     // let mut time_keeper = TimeKeeper::new(Duration::from_millis(1950), END_TURN);
 }
 
@@ -184,5 +209,4 @@ fn main() {
 * Tests
 ************************************************************/
 #[cfg(test)]
-mod tests {
-}
+mod tests {}
