@@ -1,13 +1,10 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
-use once_cell::sync::Lazy;
 use proconio::input;
-use proconio::source::line::LineSource;
 use rand::distributions::Distribution;
 use rand::distributions::Uniform;
 use rand::seq::SliceRandom;
 use rand_pcg::Pcg64Mcg;
-use std::collections::VecDeque;
-use std::io::{stdin, stdout, BufReader, Write};
+use std::io::Write;
 use std::time::{Duration, Instant};
 
 /***********************************************************
@@ -122,6 +119,10 @@ struct Input {
     A: Vec<usize>,
     B: Vec<usize>,
     C: Vec<Vec<usize>>,
+    average_population: usize,
+    average_staff: usize,
+    diff_population: Vec<isize>,
+    diff_staff: Vec<isize>,
 }
 
 impl Input {
@@ -134,9 +135,35 @@ impl Input {
             AB: [(usize, usize); K],
             C: [[usize; N]; N],
         }
-        let A = AB.iter().map(|&(a, _)| a).collect();
-        let B = AB.iter().map(|&(_, b)| b).collect();
-        Self { N, K, L, A, B, C }
+        let A: Vec<usize> = AB.iter().map(|&(a, _)| a).collect();
+        let B: Vec<usize> = AB.iter().map(|&(_, b)| b).collect();
+
+        let total_population: usize = A.iter().sum();
+        let total_staff: usize = B.iter().sum();
+        let average_population = total_population / K;
+        let average_staff = total_staff / K;
+
+        let diff_population: Vec<isize> = A
+            .iter()
+            .map(|&a| a as isize - average_population as isize)
+            .collect();
+        let diff_staff: Vec<isize> = B
+            .iter()
+            .map(|&b| b as isize - average_staff as isize)
+            .collect();
+
+        Self {
+            N,
+            K,
+            L,
+            A,
+            B,
+            C,
+            average_population,
+            average_staff,
+            diff_population,
+            diff_staff,
+        }
     }
 }
 
