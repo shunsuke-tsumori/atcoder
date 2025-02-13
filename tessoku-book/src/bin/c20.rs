@@ -3,10 +3,10 @@
 use proconio::input;
 use rand::distributions::Distribution;
 use rand::seq::SliceRandom;
+use rand::Rng;
 use std::collections::VecDeque;
 use std::io::Write;
 use std::time::{Duration, Instant};
-use rand::Rng;
 /***********************************************************
 * Consts
 ************************************************************/
@@ -61,51 +61,6 @@ macro_rules! chmax {
             false
         }
     }};
-}
-
-/***********************************************************
-* TimeKeeper
-************************************************************/
-struct TimeKeeper {
-    start_time: Instant,
-    before_time: Instant,
-    time_threshold: Duration,
-    end_turn: usize,
-    turn: usize,
-}
-
-impl TimeKeeper {
-    fn new(time_threshold: Duration, end_turn: usize) -> Self {
-        let now = Instant::now();
-        Self {
-            start_time: now,
-            before_time: now,
-            time_threshold,
-            end_turn,
-            turn: 0,
-        }
-    }
-
-    #[inline(always)]
-    fn set_turn(&mut self, t: usize) {
-        self.turn = t;
-        self.before_time = Instant::now();
-    }
-
-    #[inline(always)]
-    fn is_time_over(&self) -> bool {
-        let now = Instant::now();
-        let whole_ms = now.duration_since(self.start_time).as_millis();
-        let last_ms = now.duration_since(self.before_time).as_millis();
-        let remaining_time = self.time_threshold.as_millis().saturating_sub(whole_ms);
-        let remaining_turns = self.end_turn - self.turn;
-        if remaining_turns == 0 {
-            false
-        } else {
-            let now_threshold = remaining_time / (remaining_turns as u128);
-            last_ms >= now_threshold
-        }
-    }
 }
 
 /***********************************************************
@@ -224,7 +179,7 @@ impl State {
 
     #[inline(always)]
     fn calc_score(&self, input: &Input) -> f64 {
-        let mut pop = vec![0; input.L + 1];  // 1-indexed
+        let mut pop = vec![0; input.L + 1]; // 1-indexed
         let mut staff = vec![0; input.L + 1];
         for i in 0..input.K {
             let g = self.alloc[i];
@@ -307,29 +262,39 @@ fn gen_initial_state(input: &Input) -> State {
     State::new(assign)
 }
 
-fn annealing(input: &Input, initial_state: &State) -> State { // 一旦山登り
+fn annealing(input: &Input, initial_state: &State, time_budget: Duration) -> State {
     let mut rng = rand_pcg::Pcg64Mcg::new(42);
     let mut current = initial_state.clone();
     let mut current_score = current.calc_score(input);
+    let start_time = Instant::now();
+    let mut iter: usize = 0;
 
-    for _ in 0..100000 {  // TODO
-        // ランダムに1地区を選び、その割り当てを1～Lの中から別の値に変更
+    loop {
+        // 100ループに1回、経過時間をチェックする
+        if iter % 1000 == 0 && start_time.elapsed() >= time_budget {
+            break;
+        }
+        iter += 1;
+
+        // ランダムに1地区を選び、新グループに割り当てる
         let i = rng.gen_range(0..input.K);
         let cur_group = current.alloc[i];
         let mut new_group = cur_group;
         while new_group == cur_group {
-            new_group = rng.gen_range(1..input.L + 1);
+            new_group = rng.gen_range(1..(input.L + 1));
         }
         let mut candidate = current.clone();
         candidate.alloc[i] = new_group;
-        // 変更対象の2グループ（旧グループ、新グループ）が連結であるかチェック
+
+        // 変更対象の旧グループと新グループが連結であるかチェック
         if !check_connectivity(&candidate, input, cur_group)
             || !check_connectivity(&candidate, input, new_group)
         {
             continue;
         }
         let cand_score = candidate.calc_score(input);
-        // 改善していれば採用
+
+        // スコアが改善していれば更新
         if cand_score > current_score {
             current = candidate;
             current_score = cand_score;
@@ -342,11 +307,10 @@ fn main() {
     let input = Input::read_input();
 
     let mut initial_state = gen_initial_state(&input);
-    let mut state = annealing(&input, &initial_state);
+    let mut state = annealing(&input, &initial_state, Duration::from_millis(950));
     state.print_allocations();
     eprintln!("score: {}", initial_state.calc_score(&input));
     eprintln!("score: {}", state.calc_score(&input));
-    // let mut time_keeper = TimeKeeper::new(Duration::from_millis(1950), END_TURN);
 }
 
 /***********************************************************
