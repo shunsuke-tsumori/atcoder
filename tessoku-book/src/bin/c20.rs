@@ -1,15 +1,10 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
 
 use proconio::input;
-use rand::distributions::Distribution;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::VecDeque;
-use std::io::Write;
 use std::time::{Duration, Instant};
-/***********************************************************
-* Consts
-************************************************************/
 
 /***********************************************************
 * Macros
@@ -160,36 +155,19 @@ impl Input {
 #[derive(Debug, Clone)]
 struct State {
     alloc: Vec<usize>,
+    group_pop: Vec<usize>,
+    group_staff: Vec<usize>,
+    score: f64,
 }
 
 impl State {
     #[inline(always)]
-    fn new(alloc: Vec<usize>) -> Self {
-        Self { alloc }
-    }
-
-    #[inline(always)]
-    fn advance(&mut self) {}
-
-    #[inline(always)]
-    fn calc_score(&self, input: &Input) -> f64 {
-        let mut pop = vec![0; input.L + 1]; // 1-indexed
-        let mut staff = vec![0; input.L + 1];
-        for i in 0..input.K {
-            let g = self.alloc[i];
-            pop[g] += input.A[i];
-            staff[g] += input.B[i];
-        }
-        let p_min = pop.iter().skip(1).min().unwrap();
-        let p_max = pop.iter().skip(1).max().unwrap();
-        let q_min = staff.iter().skip(1).min().unwrap();
-        let q_max = staff.iter().skip(1).max().unwrap();
-        let ratio = (*p_min as f64 / *p_max as f64).min(*q_min as f64 / *q_max as f64);
-        let all_connected = (1..=input.L).all(|g| check_connectivity(self, input, g));
-        if all_connected {
-            1e6 * ratio
-        } else {
-            1e3 * ratio
+    fn new(alloc: Vec<usize>, group_pop: Vec<usize>, group_staff: Vec<usize>, score: f64) -> Self {
+        Self {
+            alloc,
+            group_pop,
+            group_staff,
+            score,
         }
     }
 
@@ -199,6 +177,14 @@ impl State {
             println!("{}", a);
         }
     }
+}
+
+// 移動変更の履歴（ロールバック用）
+struct MoveRecord {
+    district: usize,
+    old_group: usize,
+    new_group: usize,
+    old_score: f64,
 }
 
 fn check_connectivity(state: &State, input: &Input, group: usize) -> bool {
@@ -222,6 +208,51 @@ fn check_connectivity(state: &State, input: &Input, group: usize) -> bool {
     nodes.into_iter().all(|i| visited[i])
 }
 
+// 状態の group_pop, group_staff から比率を再計算する
+fn update_score(state: &mut State, input: &Input) -> f64 {
+    let p_min = state.group_pop.iter().skip(1).min().unwrap();
+    let p_max = state.group_pop.iter().skip(1).max().unwrap();
+    let q_min = state.group_staff.iter().skip(1).min().unwrap();
+    let q_max = state.group_staff.iter().skip(1).max().unwrap();
+    let ratio = (*p_min as f64 / *p_max as f64).min(*q_min as f64 / *q_max as f64);
+    let all_connected = (1..=input.L).all(|g| check_connectivity(state, input, g));
+    let multiplier = if all_connected { 1e6 } else { 1e3 };
+    let new_score = multiplier * ratio;
+    state.score = new_score;
+    new_score
+}
+
+/// 移動を適用（in-place 更新）し、その変更内容を MoveRecord として返す
+fn apply_move(state: &mut State, district: usize, new_group: usize, input: &Input) -> MoveRecord {
+    let old_group = state.alloc[district];
+    let old_score = state.score;
+    // 状態の更新
+    state.alloc[district] = new_group;
+    state.group_pop[old_group] -= input.A[district];
+    state.group_staff[old_group] -= input.B[district];
+    state.group_pop[new_group] += input.A[district];
+    state.group_staff[new_group] += input.B[district];
+    MoveRecord {
+        district,
+        old_group,
+        new_group,
+        old_score,
+    }
+}
+
+/// apply_move での変更を元に戻す
+fn rollback_move(state: &mut State, record: &MoveRecord, input: &Input) {
+    let d = record.district;
+    let old_group = record.old_group;
+    let new_group = record.new_group;
+    state.alloc[d] = old_group;
+    state.group_pop[new_group] -= input.A[d];
+    state.group_staff[new_group] -= input.B[d];
+    state.group_pop[old_group] += input.A[d];
+    state.group_staff[old_group] += input.B[d];
+    state.score = record.old_score;
+}
+
 /***********************************************************
 * Solution
 ************************************************************/
@@ -231,7 +262,7 @@ fn gen_initial_state(input: &Input) -> State {
     let mut best_score = -1e18;
     for seed in 0..trials {
         let state = gen_init_with_seed(input, seed);
-        let score = state.calc_score(input);
+        let score = state.score;
         if score > best_score {
             best_score = score;
             best_state = Some(state);
@@ -257,7 +288,7 @@ fn gen_init_with_seed(input: &Input, seed: u64) -> State {
     let mut group_pop = vec![0usize; L + 1];
     let mut group_staff = vec![0usize; L + 1];
 
-    // ランダムにL個の地区を各グループのシードとして割り当てる
+    // ランダムに L 個の地区を各グループのシードとして割り当てる
     let mut indices: Vec<usize> = (0..K).collect();
     indices.shuffle(&mut rng);
     for g in 1..=L {
@@ -274,7 +305,7 @@ fn gen_init_with_seed(input: &Input, seed: u64) -> State {
         diff_pop * diff_pop + diff_staff * diff_staff
     };
 
-    // 貪欲に既に割当済みの地区の隣接から未割当地区を選び、最も局所スコアが改善される候補を追加
+    // 貪欲に、既に割当済みの地区の隣接から未割当地区を選び、局所的なスコア改善が大きい候補を追加する
     while assigned_count < K {
         let mut best_gain = std::isize::MIN;
         let mut best_candidate: Option<(usize, usize)> = None; // (district, group)
@@ -297,7 +328,7 @@ fn gen_init_with_seed(input: &Input, seed: u64) -> State {
                 }
             }
         }
-        // 隣接からの候補が見つからなければ、ランダムに未割当の地区を選び、各グループへの追加効果が最も良いグループを選ぶ
+        // 隣接からの候補がなければ、ランダムに未割当の地区を選び、最も適したグループに割り当てる
         if best_candidate.is_none() {
             let unassigned: Vec<usize> = (0..K).filter(|&i| alloc[i].is_none()).collect();
             if let Some(&i) = unassigned.choose(&mut rng) {
@@ -323,13 +354,15 @@ fn gen_init_with_seed(input: &Input, seed: u64) -> State {
         }
     }
     let final_alloc = alloc.into_iter().map(|x| x.unwrap()).collect();
-    State::new(final_alloc)
+    let mut state = State::new(final_alloc, group_pop, group_staff, 0.0);
+    update_score(&mut state, input);
+    state
 }
 
 fn annealing(input: &Input, initial_state: &State, time_budget: Duration) -> State {
     let mut rng = rand_pcg::Pcg64Mcg::new(42);
     let mut current = initial_state.clone();
-    let mut current_score = current.calc_score(input);
+    let mut current_score = current.score;
     let start_time = Instant::now();
     let total_time = time_budget.as_secs_f64();
 
@@ -368,26 +401,30 @@ fn annealing(input: &Input, initial_state: &State, time_budget: Duration) -> Sta
         while new_group == cur_group {
             new_group = rng.gen_range(1..(input.L + 1));
         }
-        let mut candidate = current.clone();
-        candidate.alloc[i] = new_group;
 
-        // 変更対象の旧グループと新グループが連結かチェック
-        if !check_connectivity(&candidate, input, cur_group)
-            || !check_connectivity(&candidate, input, new_group)
+        let record = apply_move(&mut current, i, new_group, input);
+
+        // 変更対象の旧グループと新グループの連結性をチェック
+        if !check_connectivity(&current, input, cur_group)
+            || !check_connectivity(&current, input, new_group)
         {
+            rollback_move(&mut current, &record, input);
             continue;
         }
-        let cand_score = candidate.calc_score(input);
-        let delta = cand_score - current_score;
 
-        // 改善していれば必ず採用、悪化なら温度に応じた確率で採用
+        // 集計情報はすでにインクリメンタル更新済みなので、スコア再計算
+        let new_score = update_score(&mut current, input);
+        let delta = new_score - record.old_score;
+
+        // 改善なら必ず採用、悪化なら確率的に採用
         if delta > 0.0 || rng.gen::<f64>() < (delta / current_T).exp() {
-            current = candidate;
-            current_score = cand_score;
+            current_score = new_score;
             accepted_moves += 1;
             if delta < 0.0 {
                 worsened_moves += 1;
             }
+        } else {
+            rollback_move(&mut current, &record, input);
         }
     }
     current
@@ -396,11 +433,11 @@ fn annealing(input: &Input, initial_state: &State, time_budget: Duration) -> Sta
 fn main() {
     let input = Input::read_input();
 
-    let mut initial_state = gen_initial_state(&input);
-    let mut state = annealing(&input, &initial_state, Duration::from_millis(930));
+    let initial_state = gen_initial_state(&input);
+    let state = annealing(&input, &initial_state, Duration::from_millis(930));
     state.print_allocations();
-    eprintln!("score: {}", initial_state.calc_score(&input));
-    eprintln!("score: {}", state.calc_score(&input));
+    eprintln!("initial score: {}", initial_state.score);
+    eprintln!("final score: {}", state.score);
 }
 
 /***********************************************************
