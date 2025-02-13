@@ -261,16 +261,35 @@ fn annealing(input: &Input, initial_state: &State, time_budget: Duration) -> Sta
     let mut current = initial_state.clone();
     let mut current_score = current.calc_score(input);
     let start_time = Instant::now();
+    let total_time = time_budget.as_secs_f64();
+
+    let T0: f64 = 1e5;
+    let T1: f64 = 1e2;
+
     let mut iter: usize = 0;
+    let mut accepted_moves = 0;
+    let mut worsened_moves = 0;
 
     loop {
-        // 100ループに1回、経過時間をチェックする
         if iter % 1000 == 0 && start_time.elapsed() >= time_budget {
             break;
         }
         iter += 1;
 
-        // ランダムに1地区を選び、新グループに割り当てる
+        // 経過時間に応じて指数的に温度を下げる
+        let elapsed = start_time.elapsed().as_secs_f64();
+        let ratio = elapsed / total_time;
+        let T = T0 * (T1 / T0).powf(ratio);
+
+        #[cfg(debug_assertions)]
+        if iter % 1000 == 0 {
+            eprintln!(
+                "Iter {}: Score = {:.2}, T = {:.2}, accepted = {}, worsened = {}",
+                iter, current_score, T, accepted_moves, worsened_moves
+            );
+        }
+
+        // ランダムに1地区を選び、新グループに変更
         let i = rng.gen_range(0..input.K);
         let cur_group = current.alloc[i];
         let mut new_group = cur_group;
@@ -280,18 +299,23 @@ fn annealing(input: &Input, initial_state: &State, time_budget: Duration) -> Sta
         let mut candidate = current.clone();
         candidate.alloc[i] = new_group;
 
-        // 変更対象の旧グループと新グループが連結であるかチェック
+        // 変更対象の旧グループと新グループが連結かチェック
         if !check_connectivity(&candidate, input, cur_group)
             || !check_connectivity(&candidate, input, new_group)
         {
             continue;
         }
         let cand_score = candidate.calc_score(input);
+        let delta = cand_score - current_score;
 
-        // スコアが改善していれば更新
-        if cand_score > current_score {
+        // 改善していれば必ず採用、悪化なら温度に応じた確率で採用
+        if delta > 0.0 || rng.gen::<f64>() < (delta / T).exp() {
             current = candidate;
             current_score = cand_score;
+            accepted_moves += 1;
+            if delta < 0.0 {
+                worsened_moves += 1;
+            }
         }
     }
     current
