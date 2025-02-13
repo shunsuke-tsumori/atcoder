@@ -1,9 +1,9 @@
 #![allow(non_snake_case, unused_macros, unused_imports, dead_code, unused_mut)]
+
 use proconio::input;
 use rand::distributions::Distribution;
-use rand::distributions::Uniform;
 use rand::seq::SliceRandom;
-use rand_pcg::Pcg64Mcg;
+use std::collections::VecDeque;
 use std::io::Write;
 use std::time::{Duration, Instant};
 
@@ -154,7 +154,7 @@ impl Input {
             .collect();
 
         let adj = Self::gen_adj(&C, N, K);
-        eprintln!("adj: {:?}", adj);
+        // eprintln!("adj: {:?}", adj);
 
         Self {
             N,
@@ -239,17 +239,34 @@ impl State {
 * Solution
 ************************************************************/
 fn gen_initial_state(input: &Input) -> State {
-    let mut rng = Pcg64Mcg::new(42);
-    let mut alloc: Vec<usize> = Vec::with_capacity(input.K);
-    for i in 1..=input.L {
-        alloc.push(i);
+    // 各地区 i について「平均値との差の絶対値和」を指標にする。指標が小さいほど全体平均に近い
+    let mut diff_measure: Vec<(usize, isize)> = (0..input.K)
+        .map(|i| {
+            let dpop = input.diff_population[i].abs();
+            let dstaff = input.diff_staff[i].abs();
+            (i, dpop + dstaff)
+        })
+        .collect();
+    diff_measure.sort_by_key(|&(_, diff)| diff);
+    // 上位 L 個をシードとして採用（各シードには特別区番号 1～L を割り当て）
+    let seed_indices: Vec<usize> = diff_measure.iter().take(input.L).map(|&(i, _)| i).collect();
+    let mut assign = vec![usize::MAX; input.K];
+    let mut queue = VecDeque::new();
+    for (k, &i) in seed_indices.iter().enumerate() {
+        assign[i] = k + 1;
+        queue.push_back(i);
     }
-    let uniform = Uniform::from(1..=input.L);
-    for _ in input.L..input.K {
-        alloc.push(uniform.sample(&mut rng));
+    // マルチソースBFSで連結部分へ同じ特別区番号を伝播
+    while let Some(v) = queue.pop_front() {
+        let group = assign[v];
+        for &nb in &input.adj[v] {
+            if assign[nb] == usize::MAX {
+                assign[nb] = group;
+                queue.push_back(nb);
+            }
+        }
     }
-    alloc.shuffle(&mut rng);
-    State::new(alloc)
+    State::new(assign)
 }
 
 fn annealing(input: &Input, initial_state: &State) -> State {
@@ -261,7 +278,7 @@ fn main() {
 
     let mut initial_state = gen_initial_state(&input);
     let mut state = annealing(&input, &initial_state);
-    // state.print_allocations();
+    state.print_allocations();
     // let mut time_keeper = TimeKeeper::new(Duration::from_millis(1950), END_TURN);
 }
 
