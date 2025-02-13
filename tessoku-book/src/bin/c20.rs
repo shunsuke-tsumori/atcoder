@@ -226,34 +226,104 @@ fn check_connectivity(state: &State, input: &Input, group: usize) -> bool {
 * Solution
 ************************************************************/
 fn gen_initial_state(input: &Input) -> State {
-    // 各地区 i について「平均値との差の絶対値和」を指標にする。指標が小さいほど全体平均に近い
-    let mut diff_measure: Vec<(usize, isize)> = (0..input.K)
-        .map(|i| {
-            let dpop = input.diff_population[i].abs();
-            let dstaff = input.diff_staff[i].abs();
-            (i, dpop + dstaff)
-        })
-        .collect();
-    diff_measure.sort_by_key(|&(_, diff)| diff);
-    // 上位 L 個をシードとして採用（各シードには特別区番号 1～L を割り当て）
-    let seed_indices: Vec<usize> = diff_measure.iter().take(input.L).map(|&(i, _)| i).collect();
-    let mut assign = vec![usize::MAX; input.K];
-    let mut queue = VecDeque::new();
-    for (k, &i) in seed_indices.iter().enumerate() {
-        assign[i] = k + 1;
-        queue.push_back(i);
-    }
-    // マルチソースBFSで連結部分へ同じ特別区番号を伝播
-    while let Some(v) = queue.pop_front() {
-        let group = assign[v];
-        for &nb in &input.adj[v] {
-            if assign[nb] == usize::MAX {
-                assign[nb] = group;
-                queue.push_back(nb);
-            }
+    let trials = 50;
+    let mut best_state: Option<State> = None;
+    let mut best_score = -1e18;
+    for seed in 0..trials {
+        let state = gen_init_with_seed(input, seed);
+        let score = state.calc_score(input);
+        if score > best_score {
+            best_score = score;
+            best_state = Some(state);
         }
     }
-    State::new(assign)
+    best_state.unwrap()
+}
+
+fn gen_init_with_seed(input: &Input, seed: u64) -> State {
+    let mut rng = rand_pcg::Pcg64Mcg::new(seed as u128);
+    let K = input.K;
+    let L = input.L;
+
+    let mut alloc: Vec<Option<usize>> = vec![None; K];
+
+    // 各グループの目標値（各グループが狙うべき人口・職員数）は、全体をグループ数で割った値とする
+    let total_population: usize = input.A.iter().sum();
+    let total_staff: usize = input.B.iter().sum();
+    let target_pop = total_population / L;
+    let target_staff = total_staff / L;
+
+    // 各グループ（1～L）の現在の合計値（1-indexed）
+    let mut group_pop = vec![0usize; L + 1];
+    let mut group_staff = vec![0usize; L + 1];
+
+    // ランダムにL個の地区を各グループのシードとして割り当てる
+    let mut indices: Vec<usize> = (0..K).collect();
+    indices.shuffle(&mut rng);
+    for g in 1..=L {
+        let i = indices[g - 1];
+        alloc[i] = Some(g);
+        group_pop[g] += input.A[i];
+        group_staff[g] += input.B[i];
+    }
+    let mut assigned_count = L;
+
+    let calc_error = |pop: usize, staff: usize| -> isize {
+        let diff_pop = target_pop as isize - pop as isize;
+        let diff_staff = target_staff as isize - staff as isize;
+        diff_pop * diff_pop + diff_staff * diff_staff
+    };
+
+    // 貪欲に既に割当済みの地区の隣接から未割当地区を選び、最も局所スコアが改善される候補を追加
+    while assigned_count < K {
+        let mut best_gain = std::isize::MIN;
+        let mut best_candidate: Option<(usize, usize)> = None; // (district, group)
+        for i in 0..K {
+            if let Some(g) = alloc[i] {
+                for &nb in &input.adj[i] {
+                    if alloc[nb].is_none() {
+                        let old_pop = group_pop[g];
+                        let old_staff = group_staff[g];
+                        let old_score = -calc_error(old_pop, old_staff);
+                        let new_pop = old_pop + input.A[nb];
+                        let new_staff = old_staff + input.B[nb];
+                        let new_score = -calc_error(new_pop, new_staff);
+                        let gain = new_score - old_score;
+                        if gain > best_gain {
+                            best_gain = gain;
+                            best_candidate = Some((nb, g));
+                        }
+                    }
+                }
+            }
+        }
+        // 隣接からの候補が見つからなければ、ランダムに未割当の地区を選び、各グループへの追加効果が最も良いグループを選ぶ
+        if best_candidate.is_none() {
+            let unassigned: Vec<usize> = (0..K).filter(|&i| alloc[i].is_none()).collect();
+            if let Some(&i) = unassigned.choose(&mut rng) {
+                let mut best_local = std::isize::MAX;
+                let mut chosen_group = 1;
+                for g in 1..=L {
+                    let new_pop = group_pop[g] + input.A[i];
+                    let new_staff = group_staff[g] + input.B[i];
+                    let local = calc_error(new_pop, new_staff);
+                    if local < best_local {
+                        best_local = local;
+                        chosen_group = g;
+                    }
+                }
+                best_candidate = Some((i, chosen_group));
+            }
+        }
+        if let Some((district, group)) = best_candidate {
+            alloc[district] = Some(group);
+            group_pop[group] += input.A[district];
+            group_staff[group] += input.B[district];
+            assigned_count += 1;
+        }
+    }
+    let final_alloc = alloc.into_iter().map(|x| x.unwrap()).collect();
+    State::new(final_alloc)
 }
 
 fn annealing(input: &Input, initial_state: &State, time_budget: Duration) -> State {
@@ -327,7 +397,7 @@ fn main() {
     let input = Input::read_input();
 
     let mut initial_state = gen_initial_state(&input);
-    let mut state = annealing(&input, &initial_state, Duration::from_millis(990));
+    let mut state = annealing(&input, &initial_state, Duration::from_millis(930));
     state.print_allocations();
     eprintln!("score: {}", initial_state.calc_score(&input));
     eprintln!("score: {}", state.calc_score(&input));
