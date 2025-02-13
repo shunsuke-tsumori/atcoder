@@ -265,27 +265,29 @@ fn annealing(input: &Input, initial_state: &State, time_budget: Duration) -> Sta
 
     let T0: f64 = 1e5;
     let T1: f64 = 1e2;
+    let mut current_T = T0;
 
     let mut iter: usize = 0;
     let mut accepted_moves = 0;
     let mut worsened_moves = 0;
 
     loop {
-        if iter % 1000 == 0 && start_time.elapsed() >= time_budget {
-            break;
-        }
         iter += 1;
-
-        // 経過時間に応じて指数的に温度を下げる
-        let elapsed = start_time.elapsed().as_secs_f64();
-        let ratio = elapsed / total_time;
-        let T = T0 * (T1 / T0).powf(ratio);
+        if (iter & ((1 << 10) - 1)) == 0 {
+            if start_time.elapsed() >= time_budget {
+                break;
+            }
+            // 経過時間に応じて指数的に温度を下げる
+            let elapsed = start_time.elapsed().as_secs_f64();
+            let ratio = elapsed / total_time;
+            current_T = T0 * (T1 / T0).powf(ratio);
+        }
 
         #[cfg(debug_assertions)]
         if iter % 1000 == 0 {
             eprintln!(
                 "Iter {}: Score = {:.2}, T = {:.2}, accepted = {}, worsened = {}",
-                iter, current_score, T, accepted_moves, worsened_moves
+                iter, current_score, current_T, accepted_moves, worsened_moves
             );
         }
 
@@ -309,7 +311,7 @@ fn annealing(input: &Input, initial_state: &State, time_budget: Duration) -> Sta
         let delta = cand_score - current_score;
 
         // 改善していれば必ず採用、悪化なら温度に応じた確率で採用
-        if delta > 0.0 || rng.gen::<f64>() < (delta / T).exp() {
+        if delta > 0.0 || rng.gen::<f64>() < (delta / current_T).exp() {
             current = candidate;
             current_score = cand_score;
             accepted_moves += 1;
@@ -325,7 +327,7 @@ fn main() {
     let input = Input::read_input();
 
     let mut initial_state = gen_initial_state(&input);
-    let mut state = annealing(&input, &initial_state, Duration::from_millis(950));
+    let mut state = annealing(&input, &initial_state, Duration::from_millis(990));
     state.print_allocations();
     eprintln!("score: {}", initial_state.calc_score(&input));
     eprintln!("score: {}", state.calc_score(&input));
