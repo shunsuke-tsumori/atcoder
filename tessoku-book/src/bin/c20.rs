@@ -123,6 +123,7 @@ struct Input {
     average_staff: usize,
     diff_population: Vec<isize>,
     diff_staff: Vec<isize>,
+    adj: Vec<Vec<usize>>,
 }
 
 impl Input {
@@ -152,6 +153,9 @@ impl Input {
             .map(|&b| b as isize - average_staff as isize)
             .collect();
 
+        let adj = Self::gen_adj(&C, N, K);
+        eprintln!("adj: {:?}", adj);
+
         Self {
             N,
             K,
@@ -163,7 +167,36 @@ impl Input {
             average_staff,
             diff_population,
             diff_staff,
+            adj,
         }
+    }
+
+    // 隣接地区を生成する
+    fn gen_adj(raw_map: &Vec<Vec<usize>>, N: usize, district_count: usize) -> Vec<Vec<usize>> {
+        let mut adj = vec![vec![]; district_count];
+        for row in 0..N {
+            for col in 0..N {
+                let d = raw_map[row][col].wrapping_sub(1);
+                if d >= district_count {
+                    continue;
+                }
+                for &(dr, dc) in &[(0, 1), (0, !0), (1, 0), (!0, 0)] {
+                    let nr = row.wrapping_add(dr);
+                    let nc = col.wrapping_add(dc);
+                    if nr < N && nc < N {
+                        let nd = raw_map[nr][nc].wrapping_sub(1);
+                        if nd < district_count && nd != d {
+                            adj[d].push(nd);
+                        }
+                    }
+                }
+            }
+        }
+        for v in &mut adj {
+            v.sort_unstable();
+            v.dedup();
+        }
+        adj
     }
 }
 
@@ -228,7 +261,7 @@ fn main() {
 
     let mut initial_state = gen_initial_state(&input);
     let mut state = annealing(&input, &initial_state);
-    state.print_allocations();
+    // state.print_allocations();
     // let mut time_keeper = TimeKeeper::new(Duration::from_millis(1950), END_TURN);
 }
 
