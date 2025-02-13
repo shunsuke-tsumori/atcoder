@@ -6,7 +6,7 @@ use rand::seq::SliceRandom;
 use std::collections::VecDeque;
 use std::io::Write;
 use std::time::{Duration, Instant};
-
+use rand::Rng;
 /***********************************************************
 * Consts
 ************************************************************/
@@ -223,8 +223,25 @@ impl State {
     fn advance(&mut self) {}
 
     #[inline(always)]
-    fn calc_score(&self) -> f64 {
-        0.0
+    fn calc_score(&self, input: &Input) -> f64 {
+        let mut pop = vec![0; input.L + 1];  // 1-indexed
+        let mut staff = vec![0; input.L + 1];
+        for i in 0..input.K {
+            let g = self.alloc[i];
+            pop[g] += input.A[i];
+            staff[g] += input.B[i];
+        }
+        let p_min = pop.iter().skip(1).min().unwrap();
+        let p_max = pop.iter().skip(1).max().unwrap();
+        let q_min = staff.iter().skip(1).min().unwrap();
+        let q_max = staff.iter().skip(1).max().unwrap();
+        let ratio = (*p_min as f64 / *p_max as f64).min(*q_min as f64 / *q_max as f64);
+        let all_connected = (1..=input.L).all(|g| check_connectivity(self, input, g));
+        if all_connected {
+            1e6 * ratio
+        } else {
+            1e3 * ratio
+        }
     }
 
     #[inline(always)]
@@ -233,6 +250,27 @@ impl State {
             println!("{}", a);
         }
     }
+}
+
+fn check_connectivity(state: &State, input: &Input, group: usize) -> bool {
+    let nodes: Vec<usize> = (0..input.K).filter(|&i| state.alloc[i] == group).collect();
+    if nodes.is_empty() {
+        return false;
+    }
+    let start = nodes[0];
+    let mut visited = vec![false; input.K];
+    let mut queue = VecDeque::new();
+    visited[start] = true;
+    queue.push_back(start);
+    while let Some(v) = queue.pop_front() {
+        for &nb in &input.adj[v] {
+            if state.alloc[nb] == group && !visited[nb] {
+                visited[nb] = true;
+                queue.push_back(nb);
+            }
+        }
+    }
+    nodes.into_iter().all(|i| visited[i])
 }
 
 /***********************************************************
@@ -269,8 +307,35 @@ fn gen_initial_state(input: &Input) -> State {
     State::new(assign)
 }
 
-fn annealing(input: &Input, initial_state: &State) -> State {
-    initial_state.clone()
+fn annealing(input: &Input, initial_state: &State) -> State { // 一旦山登り
+    let mut rng = rand_pcg::Pcg64Mcg::new(42);
+    let mut current = initial_state.clone();
+    let mut current_score = current.calc_score(input);
+
+    for _ in 0..100000 {  // TODO
+        // ランダムに1地区を選び、その割り当てを1～Lの中から別の値に変更
+        let i = rng.gen_range(0..input.K);
+        let cur_group = current.alloc[i];
+        let mut new_group = cur_group;
+        while new_group == cur_group {
+            new_group = rng.gen_range(1..input.L + 1);
+        }
+        let mut candidate = current.clone();
+        candidate.alloc[i] = new_group;
+        // 変更対象の2グループ（旧グループ、新グループ）が連結であるかチェック
+        if !check_connectivity(&candidate, input, cur_group)
+            || !check_connectivity(&candidate, input, new_group)
+        {
+            continue;
+        }
+        let cand_score = candidate.calc_score(input);
+        // 改善していれば採用
+        if cand_score > current_score {
+            current = candidate;
+            current_score = cand_score;
+        }
+    }
+    current
 }
 
 fn main() {
@@ -279,6 +344,8 @@ fn main() {
     let mut initial_state = gen_initial_state(&input);
     let mut state = annealing(&input, &initial_state);
     state.print_allocations();
+    eprintln!("score: {}", initial_state.calc_score(&input));
+    eprintln!("score: {}", state.calc_score(&input));
     // let mut time_keeper = TimeKeeper::new(Duration::from_millis(1950), END_TURN);
 }
 
