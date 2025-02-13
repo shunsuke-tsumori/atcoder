@@ -10,7 +10,6 @@ use std::time::{Duration, Instant};
 /***********************************************************
 * Consts
 ************************************************************/
-const END_TURN: usize = 100;
 
 /***********************************************************
 * Macros
@@ -167,11 +166,6 @@ impl State {
     #[inline(always)]
     fn new(alloc: Vec<usize>) -> Self {
         Self { alloc }
-    }
-
-    #[inline(always)]
-    fn is_done(&self) -> bool {
-        true
     }
 
     #[inline(always)]
